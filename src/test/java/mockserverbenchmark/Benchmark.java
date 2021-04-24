@@ -11,6 +11,7 @@ import org.mockserver.client.MockServerClient;
 import org.mockserver.matchers.TimeToLive;
 import org.mockserver.matchers.Times;
 import org.mockserver.mock.Expectation;
+import org.mockserver.model.ClearType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,7 @@ public class Benchmark {
 
     @Test
     void benchmark() {
-        var numEnquiries = 1000;
+        var numEnquiries = 50;
         var batchSize = 50;
         var start = System.currentTimeMillis();
         for (int i = 0; i < numEnquiries; i++) {
@@ -52,9 +53,9 @@ public class Benchmark {
             });
 
             log.info("{} API calls took {}ms", batchSize, System.currentTimeMillis() - now);
-            clearLogs(batchIDs);
+            //clearLogs(batchIDs);
         }
-        log.info("total time took {}ms", System.currentTimeMillis() - start);
+        log.info("total {} calls took {}ms", numEnquiries * batchSize, System.currentTimeMillis() - start);
     }
 
     private List<String> setupExpectationBatch(int batchCount) {
@@ -75,7 +76,7 @@ public class Benchmark {
     private void createExpectationWithID(String path, String id, String requestBody, String responseBody) {
         var expectation = new Expectation(
                 request().withPath(path).withBody(requestBody),
-                Times.exactly(1),
+                Times.exactly(2),
                 TimeToLive.exactly(TimeUnit.SECONDS, 40L),
                 100
         ).withId(id);
@@ -98,9 +99,11 @@ public class Benchmark {
         return "";
     }
 
-
     private void clearLogs(List<String> batchIDs) {
-        // this does NOT work as the expectation is already removed
-        //batchIDs.forEach(id -> mockClient.clear(new ExpectationId().withId(id), ClearType.LOG));
+        // clear by ID does NOT work - throws error?
+        // batchIDs.forEach(id -> mockClient.clear(new ExpectationId().withId(id), ClearType.LOG));
+        var start = System.currentTimeMillis();
+         mockClient.clear(request().withPath("/quote/.*"), ClearType.ALL);
+        log.info("clearing logs took {}ms", System.currentTimeMillis() - start);
     }
 }

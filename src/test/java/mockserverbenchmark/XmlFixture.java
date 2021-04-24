@@ -140,6 +140,6 @@ class XmlFixture {
     }
 
     static String response(String oldValue, String newValue) {
-        return RESPONSE.replace(oldValue,newValue);
+        return RESPONSE.replace(oldValue, newValue);
     }
 }
