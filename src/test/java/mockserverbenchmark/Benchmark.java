@@ -14,12 +14,14 @@ import org.mockserver.matchers.Times;
 import org.mockserver.mock.Expectation;
 import org.mockserver.model.ClearType;
 import org.mockserver.model.ExpectationId;
+import org.mockserver.model.Format;
 import org.mockserver.verify.VerificationTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -72,11 +74,18 @@ public class Benchmark {
 
         createExpectationWithID(path, uuid, requestBody, responseBody);
 
+
         var apiResponse = makeXmlApiCall(uuid);
         assertTrue(apiResponse.contains(uuid));
 
         log.info("{} took {}ms", path, System.currentTimeMillis() - start);
+
+        var defs = mockClient.retrieveActiveExpectations(request().withPath("/quote/.*"), Format.JSON);
+        System.out.println("defs = " + defs);
+
         mockClient.verify(request().withPath(path), VerificationTimes.exactly(1));
+//        mockClient.verify(new ExpectationId().withId(uuid), VerificationTimes.exactly(1));
+
     }
 
     private List<String> setupExpectationBatch(int batchCount) {
