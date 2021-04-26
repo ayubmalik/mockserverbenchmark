@@ -12,6 +12,8 @@ import org.mockserver.matchers.TimeToLive;
 import org.mockserver.matchers.Times;
 import org.mockserver.mock.Expectation;
 import org.mockserver.model.ClearType;
+import org.mockserver.model.ExpectationId;
+import org.mockserver.verify.VerificationTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +40,7 @@ public class Benchmark {
 
     @Test
     void benchmark() {
-        var numEnquiries = 50;
+        var numEnquiries = 2;
         var batchSize = 50;
         var start = System.currentTimeMillis();
         for (int i = 0; i < numEnquiries; i++) {
@@ -56,6 +58,19 @@ public class Benchmark {
             //clearLogs(batchIDs);
         }
         log.info("total {} calls took {}ms", numEnquiries * batchSize, System.currentTimeMillis() - start);
+    }
+
+    @Test
+    void singleTest() {
+        var start = System.currentTimeMillis();
+        var uuid = UUID.randomUUID().toString();
+        var path = "/quote/" + uuid;
+        var requestBody = XmlFixture.request("YourUsername", uuid);
+        var responseBody = XmlFixture.response("1168255", uuid);
+        createExpectationWithID(path, uuid, requestBody, responseBody);
+        makeXmlApiCall(uuid);
+        log.info("{} took {}ms", path, System.currentTimeMillis() - start);
+        mockClient.verify(new ExpectationId().withId(uuid), VerificationTimes.once());
     }
 
     private List<String> setupExpectationBatch(int batchCount) {
@@ -76,7 +91,7 @@ public class Benchmark {
     private void createExpectationWithID(String path, String id, String requestBody, String responseBody) {
         var expectation = new Expectation(
                 request().withPath(path).withBody(requestBody),
-                Times.exactly(2),
+                Times.exactly(1),
                 TimeToLive.exactly(TimeUnit.SECONDS, 40L),
                 100
         ).withId(id);
@@ -103,7 +118,7 @@ public class Benchmark {
         // clear by ID does NOT work - throws error?
         // batchIDs.forEach(id -> mockClient.clear(new ExpectationId().withId(id), ClearType.LOG));
         var start = System.currentTimeMillis();
-         mockClient.clear(request().withPath("/quote/.*"), ClearType.ALL);
+        mockClient.clear(request().withPath("/quote/.*"), ClearType.ALL);
         log.info("clearing logs took {}ms", System.currentTimeMillis() - start);
     }
 }
