@@ -126,11 +126,11 @@ class XmlFixture {
             "    </Contact>\n" +
             "    <ContactDBId>99999999</ContactDBId>\n" +
             "    <Password>YourPassword</Password>\n" +
-            "    <UserName>YourUsername</UserName>\n" +
+            "    <UserName>UUID_HERE</UserName>\n" +
             "</SaveContactRestRequest>";
 
     private static final String RESPONSE = "<SaveContactResponse xmlns=\"http://schemas.datacontract.org/2004/07/SmashFly.WebServices.ContactManagerService.v2\">\n" +
-            "    <ContactId>1168255</ContactId>\n" +
+            "    <ContactId>UUID_HERE</ContactId>\n" +
             "    <Errors i:nil=\"true\" xmlns:a=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\"/>\n" +
             "    <HasErrors>false</HasErrors>\n" +
             "</SaveContactResponse>";

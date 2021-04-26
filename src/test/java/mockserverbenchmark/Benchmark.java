@@ -6,6 +6,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.matchers.TimeToLive;
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -65,12 +67,16 @@ public class Benchmark {
         var start = System.currentTimeMillis();
         var uuid = UUID.randomUUID().toString();
         var path = "/quote/" + uuid;
-        var requestBody = XmlFixture.request("YourUsername", uuid);
-        var responseBody = XmlFixture.response("1168255", uuid);
+        var requestBody = XmlFixture.request("UUID_HERE", uuid);
+        var responseBody = XmlFixture.response("UUID_HERE", uuid);
+
         createExpectationWithID(path, uuid, requestBody, responseBody);
-        makeXmlApiCall(uuid);
+
+        var apiResponse = makeXmlApiCall(uuid);
+        assertTrue(apiResponse.contains(uuid));
+
         log.info("{} took {}ms", path, System.currentTimeMillis() - start);
-        mockClient.verify(new ExpectationId().withId(uuid), VerificationTimes.once());
+        mockClient.verify(request().withPath(path), VerificationTimes.exactly(1));
     }
 
     private List<String> setupExpectationBatch(int batchCount) {
@@ -78,8 +84,8 @@ public class Benchmark {
         for (int i = 0; i < batchCount; i++) {
             var uuid = UUID.randomUUID().toString();
             // replace some content with UUID so XML is different each time
-            var requestBody = XmlFixture.request("YourUsername", uuid);
-            var responseBody = XmlFixture.response("1168255", uuid);
+            var requestBody = XmlFixture.request("UUID_HERE", uuid);
+            var responseBody = XmlFixture.response("UUID_HERE", uuid);
 
             var path = "/quote/" + uuid;
             createExpectationWithID(path, uuid, requestBody, responseBody);
@@ -101,7 +107,7 @@ public class Benchmark {
     private String makeXmlApiCall(String uuid) {
         try {
             var httpPost = new HttpPost("/quote/" + uuid);
-            var requestBody = XmlFixture.request("YourUsername", uuid);
+            var requestBody = XmlFixture.request("UUID_HERE", uuid);
             var entity = new StringEntity(requestBody);
             httpPost.setEntity(entity);
             httpPost.setHeader("Content-type", "application/xml");
