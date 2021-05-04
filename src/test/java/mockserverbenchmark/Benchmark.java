@@ -44,7 +44,7 @@ public class Benchmark {
 
     @Test
     void benchmark() {
-        var numEnquiries = 2;
+        var numEnquiries = 25;
         var batchSize = 50;
         var start = System.currentTimeMillis();
         for (int i = 0; i < numEnquiries; i++) {
@@ -59,7 +59,7 @@ public class Benchmark {
             });
 
             log.info("{} API calls took {}ms", batchSize, System.currentTimeMillis() - now);
-            //clearLogs(batchIDs);
+            clearLogs(batchIDs);
         }
         log.info("total {} calls took {}ms", numEnquiries * batchSize, System.currentTimeMillis() - start);
     }
@@ -80,11 +80,9 @@ public class Benchmark {
 
         log.info("{} took {}ms", path, System.currentTimeMillis() - start);
 
-        var defs = mockClient.retrieveActiveExpectations(request().withPath("/quote/.*"), Format.JSON);
-        System.out.println("defs = " + defs);
-
-        mockClient.verify(request().withPath(path), VerificationTimes.exactly(1));
-//        mockClient.verify(new ExpectationId().withId(uuid), VerificationTimes.exactly(1));
+//        mockClient.verify(request().withPath(path), VerificationTimes.exactly(1));
+        mockClient.verify(new ExpectationId().withId(uuid), VerificationTimes.exactly(1));
+        clearLogs(List.of(uuid));
 
     }
 
