@@ -6,28 +6,24 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.matchers.TimeToLive;
 import org.mockserver.matchers.Times;
 import org.mockserver.mock.Expectation;
 import org.mockserver.model.ClearType;
-import org.mockserver.model.ExpectationId;
-import org.mockserver.model.Format;
 import org.mockserver.verify.VerificationTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
@@ -40,54 +36,61 @@ public class Benchmark {
     private final int port = 1080;
     private final HttpHost httpHost = new HttpHost(host, port);
     private final MockServerClient mockClient = new MockServerClient(host, port);
-    private final HttpClient httpClient = HttpClients.createDefault();
+    private final HttpClient httpClient = HttpClients.createMinimal();
 
     @Test
     void benchmark() {
-        var numEnquiries = 25;
-        var batchSize = 50;
-        var start = System.currentTimeMillis();
+        var numEnquiries = 20;
+        var batchSize = 100;
+        var startTotal = System.currentTimeMillis();
+        clearLogs();
         for (int i = 0; i < numEnquiries; i++) {
-            var now = System.currentTimeMillis();
+            var start = System.currentTimeMillis();
             var batchIDs = setupExpectationBatch(batchSize);
-            log.info("{} expectations took {}ms", batchSize, System.currentTimeMillis() - now);
+            log.info("{} expectations took {}ms", batchSize, System.currentTimeMillis() - start);
 
-            now = System.currentTimeMillis();
+            start = System.currentTimeMillis();
             batchIDs.forEach(id -> {
                 var result = makeXmlApiCall(id);
                 assertThat(result, containsString(id));
             });
-
-            log.info("{} API calls took {}ms", batchSize, System.currentTimeMillis() - now);
-            clearLogs(batchIDs);
+            log.info("{} API calls took {}ms", batchSize, System.currentTimeMillis() - start);
         }
-        log.info("total {} calls took {}ms", numEnquiries * batchSize, System.currentTimeMillis() - start);
+        long total = System.currentTimeMillis() - startTotal;
+        log.info("total {} calls took {}ms. AVG = {}ms", numEnquiries * batchSize, total, total / (numEnquiries * batchSize));
     }
 
     @Test
     void singleTest() {
-        var start = System.currentTimeMillis();
         var uuid = UUID.randomUUID().toString();
         var path = "/quote/" + uuid;
+
+        var start = System.currentTimeMillis();
         var requestBody = XmlFixture.request("UUID_HERE", uuid);
         var responseBody = XmlFixture.response("UUID_HERE", uuid);
+        logTask("fixtures", start);
 
+        start = System.currentTimeMillis();
         createExpectationWithID(path, uuid, requestBody, responseBody);
+        logTask("createExpectationWithID", start);
 
-
+        start = System.currentTimeMillis();
         var apiResponse = makeXmlApiCall(uuid);
         assertTrue(apiResponse.contains(uuid));
+        logTask("makeXmlApiCall " + path, start);
 
-        log.info("{} took {}ms", path, System.currentTimeMillis() - start);
+        start = System.currentTimeMillis();
+        mockClient.verify(request().withPath(path), VerificationTimes.exactly(1));
+        logTask("verify " + uuid, start);
+        clearLogs();
+    }
 
-//        mockClient.verify(request().withPath(path), VerificationTimes.exactly(1));
-        mockClient.verify(new ExpectationId().withId(uuid), VerificationTimes.exactly(1));
-        clearLogs(List.of(uuid));
-
+    private void logTask(String name, long start) {
+        log.info("{} took {}ms", name, System.currentTimeMillis() - start);
     }
 
     private List<String> setupExpectationBatch(int batchCount) {
-        var batchIDs = new ArrayList<String>();
+        var batchIDs = new ArrayList<String>(batchCount);
         for (int i = 0; i < batchCount; i++) {
             var uuid = UUID.randomUUID().toString();
             // replace some content with UUID so XML is different each time
@@ -115,8 +118,7 @@ public class Benchmark {
         try {
             var httpPost = new HttpPost("/quote/" + uuid);
             var requestBody = XmlFixture.request("UUID_HERE", uuid);
-            var entity = new StringEntity(requestBody);
-            httpPost.setEntity(entity);
+            httpPost.setEntity(new StringEntity(requestBody));
             httpPost.setHeader("Content-type", "application/xml");
             var response = httpClient.execute(httpHost, httpPost);
             return EntityUtils.toString(response.getEntity());
@@ -127,7 +129,7 @@ public class Benchmark {
         return "";
     }
 
-    private void clearLogs(List<String> batchIDs) {
+    private void clearLogs() {
         // clear by ID does NOT work - throws error?
         // batchIDs.forEach(id -> mockClient.clear(new ExpectationId().withId(id), ClearType.LOG));
         var start = System.currentTimeMillis();
